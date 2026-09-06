@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/cat_processing">
+
+        <SwitchPreferenceCompat
+            app:key="reencode"
+            app:defaultValue="true"
+            app:title="@string/pref_reencode_title"
+            app:summaryOn="@string/pref_reencode_on"
+            app:summaryOff="@string/pref_reencode_off" />
+
+        <SwitchPreferenceCompat
+            app:key="random_file_name"
+            app:defaultValue="true"
+            app:title="@string/pref_random_name_title"
+            app:summaryOn="@string/pref_random_name_on"
+            app:summaryOff="@string/pref_random_name_off" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/cat_output">
+
+        <Preference
+            app:key="output_dir_pick"
+            app:title="@string/pref_output_dir_title"
+            app:summary="@string/pref_output_dir_default" />
+
+        <Preference
+            app:key="output_dir_reset"
+            app:title="@string/pref_output_dir_reset"
+            app:summary="@string/pref_output_dir_reset_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/cat_about">
+
+        <Preference
+            app:key="about_version"
+            app:title="@string/pref_version"
+            app:selectable="false" />
+
+        <Preference
+            app:key="about_how"
+            app:title="@string/how_title"
+            app:summary="@string/how_summary" />
+
+        <Preference
+            app:key="about_privacy"
+            app:title="@string/privacy_title"
+            app:summary="@string/privacy_summary" />
+
+        <Preference
+            app:key="about_license"
+            app:title="@string/pref_license"
+            app:summary="@string/pref_license_summary" />
+
+        <Preference
+            app:key="about_source"
+            app:title="@string/pref_source"
+            app:summary="@string/pref_source_summary" />
+
+        <Preference
+            app:key="about_third_party"
+            app:title="@string/third_party_title"
+            app:summary="@string/third_party_summary" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
