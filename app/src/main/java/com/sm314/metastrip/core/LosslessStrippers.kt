@@ -58,7 +58,14 @@ object JpegStripper {
                     // would make RGB or CMYK JPEGs decode with wrong colours.
                     val adobe = marker == 0xEE && len >= 7 &&
                         data.tag(i + 2) == "Adob" && i + 6 < data.size && data[i + 6] == 'e'.code.toByte()
-                    val drop = (marker in 0xE0..0xEF && !adobe) || marker == 0xFE
+                    // APP2 "ICC_PROFILE" is the colour profile. This is the
+                    // lossless path, where the picture must look exactly as it
+                    // did, and dropping the profile would shift the colours of
+                    // a wide gamut photo. A profile describes a colour space,
+                    // not a person or a place.
+                    val icc = marker == 0xE2 && len >= 14 &&
+                        i + 13 < data.size && data.tag(i + 2) == "ICC_"
+                    val drop = (marker in 0xE0..0xEF && !adobe && !icc) || marker == 0xFE
                     if (!drop) {
                         out.write(0xFF); out.write(marker)
                         out.write(data, i, segEnd - i)

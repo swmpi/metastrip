@@ -26,15 +26,24 @@ import android.view.View
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.IntentCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.sm314.metastrip.R
+import com.sm314.metastrip.app.MainViewModel.DeleteNote
+import com.sm314.metastrip.app.MainViewModel.Status
 import com.sm314.metastrip.databinding.ActivityMainBinding
 
+/**
+ * Renders [MainViewModel.state] and forwards user actions to the ViewModel.
+ * Holds no state of its own beyond what the preview is currently showing.
+ */
 class MainActivity : AppCompatActivity() {
 
     private companion object {
@@ -44,25 +53,27 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var settings: Settings
-    private var sourceUri: Uri? = null
-    private var result: MetadataStripper.Result? = null
+    private val vm: MainViewModel by viewModels()
+
+    /** Which image the preview currently shows, so it is not reloaded on every state change. */
+    private var previewedUri: Uri? = null
 
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) onImageChosen(uri) }
+    ) { uri -> if (uri != null) vm.onImageChosen(uri) }
 
     /** Result of the system's own "delete this photo?" dialog. */
     private val confirmDelete = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        val deleted = result.resultCode == RESULT_OK
-        appendStatus(getString(if (deleted) R.string.delete_done else R.string.delete_declined))
+        vm.onDeleteNote(if (result.resultCode == RESULT_OK) DeleteNote.Deleted else DeleteNote.Kept)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyWindowInsets(binding.root)
         settings = Settings(this)
 
         binding.toolbar.inflateMenu(R.menu.main_menu)
@@ -77,10 +88,18 @@ class MainActivity : AppCompatActivity() {
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
             )
         }
-        binding.stripButton.setOnClickListener { stripCurrentImage() }
+        binding.stripButton.setOnClickListener { vm.strip(applicationContext, settings) }
         binding.shareButton.setOnClickListener { shareResult() }
 
-        handleShareIntent(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                vm.state.collect { render(it) }
+            }
+        }
+
+        // The ViewModel already holds any image from before a rotation, so
+        // only consume the share intent on a genuinely fresh start.
+        if (savedInstanceState == null) handleShareIntent(intent)
     }
 
     override fun onResume() {
@@ -93,27 +112,51 @@ class MainActivity : AppCompatActivity() {
         handleShareIntent(intent)
     }
 
-    /** Supports "Share to MetaStrip" from a gallery or any other app. */
-    private fun handleShareIntent(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND) return
-        val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return
-        // Other apps may only hand over content:// URIs, which go through a
-        // provider and carry an explicit grant. file:// and anything else
-        // would let a sender point the app at arbitrary paths.
-        if (uri.scheme != ContentResolver.SCHEME_CONTENT) {
-            binding.status.text = getString(R.string.status_bad_share)
-            return
+    // ---------- Rendering ----------
+
+    private fun render(s: MainViewModel.UiState) {
+        binding.progress.visibility = if (s.busy) View.VISIBLE else View.GONE
+        binding.pickButton.isEnabled = !s.busy
+        binding.stripButton.isEnabled = !s.busy && s.sourceUri != null
+        binding.shareButton.visibility = if (s.result != null) View.VISIBLE else View.GONE
+        binding.status.text = statusText(s)
+
+        val want = s.result?.uri ?: s.sourceUri
+        if (want != previewedUri) {
+            previewedUri = want
+            if (want != null) showPreview(want) else binding.preview.setImageDrawable(null)
         }
-        onImageChosen(uri)
+
+        // Runs once per successful strip. Cleared immediately so a rotation
+        // in the middle of the system dialog does not launch a second one.
+        s.pendingDelete?.let { source ->
+            vm.onDeleteHandled()
+            deleteOriginal(source)
+        }
     }
 
-    private fun onImageChosen(uri: Uri) {
-        sourceUri = uri
-        result = null
-        showPreview(uri)
-        binding.status.text = getString(R.string.status_ready)
-        binding.stripButton.isEnabled = true
-        binding.shareButton.visibility = View.GONE
+    private fun statusText(s: MainViewModel.UiState): String {
+        val main = when (val st = s.status) {
+            Status.Empty -> getString(R.string.status_empty)
+            Status.Ready -> getString(R.string.status_ready)
+            Status.Working -> getString(R.string.status_working)
+            Status.BadShare -> getString(R.string.status_bad_share)
+            is Status.Error -> getString(R.string.status_error, st.message)
+            is Status.Done -> {
+                val method = when (st.method) {
+                    MetadataStripper.Method.REENCODED -> getString(R.string.method_reencoded)
+                    MetadataStripper.Method.LOSSLESS -> getString(R.string.method_lossless)
+                }
+                getString(R.string.status_done, st.fileName, method)
+            }
+        }
+        val note = when (val n = s.deleteNote) {
+            null -> null
+            DeleteNote.Deleted -> getString(R.string.delete_done)
+            DeleteNote.Kept -> getString(R.string.delete_declined)
+            is DeleteNote.Failed -> getString(R.string.delete_failed, n.reason)
+        }
+        return if (note == null) main else "$main\n$note"
     }
 
     /**
@@ -133,70 +176,49 @@ class MainActivity : AppCompatActivity() {
                     }
                 }.getOrNull()
             }
-            if (bitmap != null) binding.preview.setImageBitmap(bitmap)
-            else binding.preview.setImageDrawable(null)
-        }
-    }
-
-    private fun stripCurrentImage() {
-        val uri = sourceUri ?: return
-        setBusy(true)
-        binding.status.text = getString(R.string.status_working)
-
-        lifecycleScope.launch {
-            val outcome = withContext(Dispatchers.IO) {
-                runCatching { MetadataStripper.strip(applicationContext, uri, settings) }
-            }
-            setBusy(false)
-            outcome.onSuccess { res ->
-                result = res
-                showPreview(res.uri)
-                val methodText = when (res.method) {
-                    MetadataStripper.Method.REENCODED -> getString(R.string.method_reencoded)
-                    MetadataStripper.Method.LOSSLESS -> getString(R.string.method_lossless)
-                }
-                binding.status.text = getString(R.string.status_done, res.fileName, methodText)
-                binding.shareButton.visibility = View.VISIBLE
-                // Only ever delete after the clean copy is safely written.
-                if (settings.deleteOriginal) deleteOriginal(uri)
-            }.onFailure { err ->
-                binding.status.text = getString(
-                    R.string.status_error,
-                    err.localizedMessage ?: err.javaClass.simpleName
-                )
+            // Only apply if this is still the image we want; a newer pick may have superseded it.
+            if (previewedUri == uri) {
+                if (bitmap != null) binding.preview.setImageBitmap(bitmap)
+                else binding.preview.setImageDrawable(null)
             }
         }
     }
 
-    /** Runs only after a clean copy exists on disk. */
+    // ---------- Actions ----------
+
+    /** Supports "Share to MetaStrip" from a gallery or any other app. */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return
+        // Other apps may only hand over content:// URIs, which go through a
+        // provider and carry an explicit grant. file:// and anything else
+        // would let a sender point the app at arbitrary paths.
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) {
+            vm.onBadShare()
+            return
+        }
+        vm.onImageChosen(uri)
+    }
+
+    /** Runs only after a clean copy exists on disk and has been verified. */
     private fun deleteOriginal(source: Uri) {
         when (val outcome = OriginalDeleter.delete(applicationContext, source)) {
             is OriginalDeleter.Outcome.Deleted ->
-                appendStatus(getString(R.string.delete_done))
+                vm.onDeleteNote(DeleteNote.Deleted)
             is OriginalDeleter.Outcome.NeedsConsent ->
                 confirmDelete.launch(IntentSenderRequest.Builder(outcome.intentSender).build())
             is OriginalDeleter.Outcome.Unsupported ->
-                appendStatus(getString(R.string.delete_failed, outcome.reason))
+                vm.onDeleteNote(DeleteNote.Failed(outcome.reason))
         }
     }
 
-    private fun appendStatus(line: String) {
-        binding.status.text = binding.status.text.toString() + "\n" + line
-    }
-
     private fun shareResult() {
-        val res = result ?: return
+        val res = vm.state.value.result ?: return
         val share = Intent(Intent.ACTION_SEND).apply {
             type = res.mimeType
             putExtra(Intent.EXTRA_STREAM, res.uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(share, getString(R.string.share_title)))
-    }
-
-    private fun setBusy(busy: Boolean) {
-        binding.progress.visibility = if (busy) View.VISIBLE else View.GONE
-        binding.pickButton.isEnabled = !busy
-        binding.stripButton.isEnabled = !busy && sourceUri != null
     }
 }

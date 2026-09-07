@@ -19,7 +19,7 @@ package com.sm314.metastrip.app
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.HeifWriter
+import androidx.heifwriter.HeifWriter
 import java.io.File
 
 /**
@@ -27,7 +27,9 @@ import java.io.File
  * when it is re-encoded.
  *
  * Bitmap.compress() cannot produce HEIC; the platform only offers JPEG, PNG
- * and WebP. HeifWriter goes through the device HEVC encoder instead.
+ * and WebP. androidx.heifwriter.HeifWriter goes through the device HEVC
+ * encoder instead. Note this is the AndroidX library, not the same-named
+ * android.media.HeifWriter, which is a hidden platform class.
  *
  * Two things make this best effort rather than guaranteed:
  *

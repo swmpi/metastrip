@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Extra breathing room below the status bar, on top of the system inset,
+        so the toolbar title does not sit flush against the clock and icons.
+    -->
+    <dimen name="content_top_spacing">10dp</dimen>
+</resources>

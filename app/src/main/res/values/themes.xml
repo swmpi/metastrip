@@ -26,7 +26,12 @@
         <item name="colorErrorContainer">@color/md_error_container</item>
         <item name="colorOnErrorContainer">@color/md_on_error_container</item>
 
-        <!-- System bars match the surface so there is no light band at the top or bottom. -->
+        <!--
+            Bar colours apply on Android 14 and below. On Android 15 and above
+            the bars are transparent and the app's own background shows through,
+            which is the same dark surface either way. Content is kept clear of
+            the bars by the inset handling in WindowInsets.kt.
+        -->
         <item name="android:statusBarColor">@color/md_surface</item>
         <item name="android:navigationBarColor">@color/md_surface</item>
         <item name="android:windowLightStatusBar">false</item>

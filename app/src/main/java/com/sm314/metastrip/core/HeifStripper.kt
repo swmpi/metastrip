@@ -220,10 +220,29 @@ object HeifStripper {
      * deleted. A udes (user description: name, description, tags) is replaced
      * by a free box of the same size, which keeps every index valid.
      */
+    /**
+     * Properties are referenced by position, so a property cannot simply be
+     * deleted without breaking every index in ipma. Each one that carries
+     * metadata is replaced by a free box of the same size instead, which keeps
+     * all indexes valid.
+     *
+     * Dropped:
+     *  - udes: user description (name, description, tags)
+     *  - altt, kmat, mint: accessibility text, matting and integrity blocks
+     *    that can carry free text or hashes of the original.
+     *
+     * Kept on purpose:
+     *  - colr: the colour profile. This is the lossless path, where the rule
+     *    is that the picture must look exactly as it did. Removing an ICC
+     *    profile would make a wide gamut photo display with the wrong
+     *    colours. A profile names a colour space and its vendor, not the
+     *    person or the place, so this costs nothing that matters.
+     *    Re-encode mode converts to sRGB and writes no profile at all.
+     */
     private fun buildIpco(data: ByteArray, ipco: Box): ByteArray {
         val body = ByteSink()
         for (prop in parseBoxes(data, ipco.payload, ipco.end)) {
-            if (prop.type == "udes") {
+            if (prop.type in droppedProperties) {
                 body.writeU32(prop.size.toLong())
                 body.writeAscii("free")
                 repeat(prop.size - 8) { body.write(0) }
@@ -233,6 +252,8 @@ object HeifStripper {
         }
         return box("ipco", body.toByteArray())
     }
+
+    private val droppedProperties = setOf("udes", "altt", "kmat", "mint")
 
     private fun buildIpma(data: ByteArray, ipma: Box, remove: Set<Long>): ByteArray {
         val version = u8(data, ipma.payload)

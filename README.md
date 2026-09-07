@@ -27,7 +27,7 @@ keeps its own where the platform allows it:
 | Input | Re-encoded output |
 |-------|-------------------|
 | JPEG | JPEG, quality 95 |
-| HEIC | HEIC, quality 95, written with `HeifWriter` via the device HEVC encoder. Falls back to JPEG if the device has no usable encoder. |
+| HEIC | HEIC, quality 95, written with `androidx.heifwriter` via the device HEVC encoder. Falls back to JPEG if the device has no usable encoder. |
 | AVIF | JPEG, quality 95, because Android has no AVIF encoder. |
 
 HEIC is kept as HEIC so a phone's photo library isn't silently converted

@@ -42,7 +42,10 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.0")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // Public HeifWriter. android.media.HeifWriter is a hidden platform class.
+    implementation("androidx.heifwriter:heifwriter:1.1.0")
     implementation("com.google.android.material:material:1.12.0")
 }
