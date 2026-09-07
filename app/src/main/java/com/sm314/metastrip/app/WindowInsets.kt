@@ -35,7 +35,7 @@ import androidx.core.view.updatePadding
  *
  * On Android 14 and below the window does not extend behind the bars, so the
  * reported insets are zero and this changes nothing. The root keeps its own
- * background, so the bars still show the app's surface colour rather than a
+ * background, so the bars still show the app's surface color rather than a
  * gap.
  *
  * A little extra space is added below the status bar so the toolbar title does

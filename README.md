@@ -12,7 +12,7 @@ of that too, unless something strips it first.
 
 ## What it removes
 
-EXIF, XMP, IPTC, ICC colour profiles, embedded thumbnails, comments, and
+EXIF, XMP, IPTC, ICC color profiles, embedded thumbnails, comments, and
 vendor-specific blocks. The exact method depends on the file type.
 
 **PNG, WebP, GIF, BMP**

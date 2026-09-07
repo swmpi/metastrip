@@ -54,14 +54,14 @@ object JpegStripper {
                     if (i + 2 > data.size) break
                     val len = ((data[i].toInt() and 0xFF) shl 8) or (data[i + 1].toInt() and 0xFF)
                     val segEnd = (i + len).coerceAtMost(data.size)
-                    // APP14 "Adobe" only holds the colour transform flag. Dropping it
-                    // would make RGB or CMYK JPEGs decode with wrong colours.
+                    // APP14 "Adobe" only holds the color transform flag. Dropping it
+                    // would make RGB or CMYK JPEGs decode with wrong colors.
                     val adobe = marker == 0xEE && len >= 7 &&
                         data.tag(i + 2) == "Adob" && i + 6 < data.size && data[i + 6] == 'e'.code.toByte()
-                    // APP2 "ICC_PROFILE" is the colour profile. This is the
+                    // APP2 "ICC_PROFILE" is the color profile. This is the
                     // lossless path, where the picture must look exactly as it
-                    // did, and dropping the profile would shift the colours of
-                    // a wide gamut photo. A profile describes a colour space,
+                    // did, and dropping the profile would shift the colors of
+                    // a wide gamut photo. A profile describes a color space,
                     // not a person or a place.
                     val icc = marker == 0xE2 && len >= 14 &&
                         i + 13 < data.size && data.tag(i + 2) == "ICC_"

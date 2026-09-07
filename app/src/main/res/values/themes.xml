@@ -27,7 +27,7 @@
         <item name="colorOnErrorContainer">@color/md_on_error_container</item>
 
         <!--
-            Bar colours apply on Android 14 and below. On Android 15 and above
+            Bar colors apply on Android 14 and below. On Android 15 and above
             the bars are transparent and the app's own background shows through,
             which is the same dark surface either way. Content is kept clear of
             the bars by the inset handling in WindowInsets.kt.

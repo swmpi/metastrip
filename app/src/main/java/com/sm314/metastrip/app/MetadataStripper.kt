@@ -60,7 +60,10 @@ import java.util.Locale
 object MetadataStripper {
 
     enum class Method { REENCODED, LOSSLESS }
-    enum class Kind { JPEG, PNG, WEBP, HEIF, AVIF, OTHER }
+
+    enum class Kind(val label: String) {
+        JPEG("JPEG"), PNG("PNG"), WEBP("WebP"), HEIF("HEIC"), AVIF("AVIF"), OTHER("this format")
+    }
 
     data class Result(val uri: Uri, val mimeType: String, val fileName: String, val method: Method)
 
@@ -103,9 +106,10 @@ object MetadataStripper {
 
         val lossyInput = kind == Kind.JPEG || kind == Kind.HEIF || kind == Kind.AVIF
         val output = if (lossyInput && !settings.reencode) {
-            losslessOutput(context, source, kind) ?: reencodeOutput(context, source, kind)
+            losslessOutput(context, source, kind)
+                ?: reencodeOutput(context, source, kind, afterLosslessFailed = true)
         } else {
-            reencodeOutput(context, source, kind)
+            reencodeOutput(context, source, kind, afterLosslessFailed = false)
         }
 
         val baseName = if (settings.randomFileName) randomName() else cleanName(context, source)
@@ -197,14 +201,20 @@ object MetadataStripper {
         val format: Bitmap.CompressFormat, val quality: Int, val mime: String, val ext: String
     )
 
-    private fun reencodeOutput(context: Context, source: Uri, kind: Kind): Output {
+    private fun reencodeOutput(
+        context: Context, source: Uri, kind: Kind, afterLosslessFailed: Boolean
+    ): Output {
         checkPixels(context, source)
         val decoderSource = ImageDecoder.createSource(context.contentResolver, source)
-        val bitmap = ImageDecoder.decodeBitmap(decoderSource) { decoder, _, _ ->
-            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE   // needed for compress()
-            decoder.isMutableRequired = false
-            // Convert to sRGB so the encoder has no reason to embed an ICC profile.
-            decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+        val bitmap = try {
+            ImageDecoder.decodeBitmap(decoderSource) { decoder, _, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE   // needed for compress()
+                decoder.isMutableRequired = false
+                // Convert to sRGB so the encoder has no reason to embed an ICC profile.
+                decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+            }
+        } catch (e: Exception) {
+            throw decodeFailed(kind, afterLosslessFailed, e)
         }
 
         // HEIC keeps its format when the device has an HEVC encoder, so a HEIC
@@ -230,7 +240,7 @@ object MetadataStripper {
         }
         // Encode to memory, then run the lossless stripper over the encoder's own
         // output. The platform encoder writes only JFIF/ICC/sRGB blocks, but this
-        // makes the guarantee independent of encoder behaviour.
+        // makes the guarantee independent of encoder behavior.
         val encoded = ByteArrayOutputStream()
         try {
             if (!bitmap.compress(enc.format, enc.quality, encoded)) throw IOException("Encoding failed")
@@ -247,6 +257,41 @@ object MetadataStripper {
             throw IOException(e.message)
         }
         return Output(enc.mime, enc.ext, Method.REENCODED) { it.write(bytes) }
+    }
+
+    /**
+     * Turns a decoder failure into something the user can act on.
+     *
+     * ImageDecoder reports these as raw Skia strings such as "getPixels failed
+     * with error invalid input", which say nothing about the cause or the fix.
+     *
+     * For AVIF the usual cause is an AV1 profile Android does not implement.
+     * Every Android AV1 decoder, hardware and software alike, is Main profile
+     * only: 8- or 10-bit 4:2:0. Files using 4:4:4, 4:2:2 or 12-bit sit in the
+     * High and Professional profiles and are refused on every Android version,
+     * so telling the user to update is wrong. Lossless mode never decodes, so
+     * it still handles these files and keeps them as AVIF.
+     */
+    private fun decodeFailed(kind: Kind, afterLosslessFailed: Boolean, cause: Exception): IOException {
+        val advice = if (afterLosslessFailed) {
+            "Its structure could not be read for lossless stripping either, so MetaStrip cannot handle this file."
+        } else {
+            "Turn off re-encoding in Settings to strip it losslessly and keep it as ${kind.label}."
+        }
+        val message = when (kind) {
+            Kind.AVIF ->
+                "Android cannot decode this AVIF. It supports only 8-bit and 10-bit 4:2:0 AVIF; " +
+                    "4:4:4, 4:2:2 and 12-bit files are refused on every Android version. $advice"
+            // JPEG and HEIC also have a lossless path, so the same advice applies.
+            Kind.HEIF, Kind.JPEG -> "Android cannot decode this ${kind.label}. $advice"
+            // PNG, WebP and the rest have no lossless path to fall back to.
+            else -> {
+                val detail = cause.message?.takeIf { it.isNotBlank() }
+                if (detail != null) "This image could not be decoded ($detail)."
+                else "This image could not be decoded."
+            }
+        }
+        return IOException(message, cause)
     }
 
     /** Returns null when the file cannot be handled losslessly (e.g. a HEIF image sequence). */

@@ -232,10 +232,10 @@ object HeifStripper {
      *    that can carry free text or hashes of the original.
      *
      * Kept on purpose:
-     *  - colr: the colour profile. This is the lossless path, where the rule
+     *  - colr: the color profile. This is the lossless path, where the rule
      *    is that the picture must look exactly as it did. Removing an ICC
      *    profile would make a wide gamut photo display with the wrong
-     *    colours. A profile names a colour space and its vendor, not the
+     *    colors. A profile names a color space and its vendor, not the
      *    person or the place, so this costs nothing that matters.
      *    Re-encode mode converts to sRGB and writes no profile at all.
      */
