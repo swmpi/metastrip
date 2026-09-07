@@ -21,7 +21,7 @@
     <!-- Settings: processing -->
     <string name="cat_processing">Processing</string>
     <string name="pref_reencode_title">Re-encode JPEG, HEIC and AVIF (recommended)</string>
-    <string name="pref_reencode_on">On. Lossy photos are rebuilt from raw pixels and saved as a quality 95 JPEG, so nothing hidden can survive. PNG, WebP, GIF and BMP are always rebuilt losslessly, whatever this setting says.</string>
+    <string name="pref_reencode_on">On. Lossy photos are rebuilt from raw pixels, so nothing hidden can survive. HEIC stays HEIC where the device supports it. JPEG stays JPEG, and AVIF becomes JPEG because Android cannot write AVIF. PNG, WebP, GIF and BMP are always rebuilt losslessly.</string>
     <string name="pref_reencode_off">Off. JPEG, HEIC and AVIF keep their pixels exactly as they are. Only the metadata blocks are cut out. JPEGs shot sideways may lose their rotation. PNG, WebP, GIF and BMP are still rebuilt losslessly.</string>
     <string name="reencode_confirm_title">Turn off re-encoding?</string>
     <string name="reencode_confirm_message">Re-encoding is the only way to be sure every piece of metadata is gone, including types this app does not know about.\n\nWith it off, MetaStrip cuts the known metadata blocks out of JPEG, HEIC and AVIF files and keeps the compressed pixels untouched. Your photo quality stays exactly as it was, but:\n\n• Unusual or hidden data inside the pixel stream cannot be detected.\n• JPEGs shot sideways may appear sideways, because the rotation lives in the removed EXIF block. HEIC and AVIF keep their rotation.\n\nPNG, WebP, GIF and BMP are lossless already and are always rebuilt from pixels.\n\nDo you want to turn it off?</string>
@@ -29,8 +29,19 @@
     <string name="reencode_confirm_no">Keep on</string>
 
     <string name="pref_random_name_title">Random file name</string>
-    <string name="pref_random_name_on">On. Saved files get a random 13 character name, like k3Xq9ZbT2mLp7.jpg, so the name gives nothing away.</string>
+    <string name="pref_random_name_on">On. Saved files get a random 13 character name, like hwpn1dprea5c9.jpg, so the name gives nothing away.</string>
     <string name="pref_random_name_off">Off. Saved files keep the original name with _clean added.</string>
+
+    <string name="pref_delete_original_title">Delete the original</string>
+    <string name="pref_delete_original_on">On. After a clean copy is saved, MetaStrip asks Android to delete the photo you picked. Android shows its own confirmation each time.</string>
+    <string name="pref_delete_original_off">Off. The photo you picked is left alone and a clean copy is saved alongside it.</string>
+    <string name="delete_confirm_title">Delete originals after stripping?</string>
+    <string name="delete_confirm_message">The clean copy is always written and checked first, so a failure cannot lose your photo. After that, MetaStrip asks Android to delete the original, and Android shows its own confirmation each time.\n\nDeleting cannot be undone. The photo may still sit in your gallery\'s recently deleted folder for a while, but do not count on it.\n\nPhotos chosen with the system picker cannot be deleted at all, because Android only grants read access to them. Sharing a photo into MetaStrip from your gallery does allow it.\n\nTurn this on?</string>
+    <string name="delete_confirm_yes">Turn on</string>
+    <string name="delete_confirm_no">Cancel</string>
+    <string name="delete_done">Original deleted.</string>
+    <string name="delete_declined">Original kept.</string>
+    <string name="delete_failed">Original not deleted. %1$s</string>
 
     <!-- Settings: output -->
     <string name="cat_output">Output</string>
@@ -47,16 +58,16 @@
     <string name="version_format">%1$s (build %2$d)</string>
     <string name="how_title">What gets removed</string>
     <string name="how_summary">EXIF, XMP, IPTC, ICC, thumbnails, comments and more.</string>
-    <string name="how_message">Photos carry hidden data: where they were taken, when, with which phone, sometimes even the owner\'s name.\n\nLossless formats (PNG, WebP, GIF, BMP) are always decoded to raw pixels and written as a fresh lossless file. Nothing but pixels is written, so nothing hidden survives.\n\nLossy formats (JPEG, HEIC, AVIF) do the same by default and are saved as a quality 95 JPEG. Turn off re-encoding in Settings to keep their compressed pixels byte for byte and remove only the metadata blocks: EXIF, XMP, IPTC, ICC profiles, thumbnails, comments and vendor blocks.\n\nAVIF re-encoding needs Android 12 or newer. Lossless AVIF stripping works on any version.\n\nThe original file is never changed. A new copy is written to the save folder.</string>
+    <string name="how_message">Photos carry hidden data: where they were taken, when, with which phone, sometimes even the owner\'s name.\n\nLossless formats (PNG, WebP, GIF, BMP) are always decoded to raw pixels and written as a fresh lossless file. Nothing but pixels is written, so nothing hidden survives.\n\nLossy formats (JPEG, HEIC, AVIF) do the same by default. JPEG stays JPEG at quality 95, and HEIC stays HEIC on devices with an HEVC encoder. AVIF becomes JPEG, because Android has no AVIF encoder. Turn off re-encoding in Settings to keep their compressed pixels byte for byte and remove only the metadata blocks: EXIF, XMP, IPTC, ICC profiles, thumbnails, comments and vendor blocks.\n\nAVIF re-encoding needs Android 12 or newer. Lossless AVIF stripping works on any version.\n\nThe original file is never changed. A new copy is written to the save folder.</string>
     <string name="privacy_title">Privacy</string>
     <string name="privacy_summary">No permissions, no network, no data collected.</string>
     <string name="privacy_message">MetaStrip asks for no permissions. It uses the system photo picker to read the image you choose and the system folder picker or media library to save the result.\n\nThe app has no internet access. Nothing leaves your device. No analytics, no crash reporting, no accounts.</string>
     <string name="pref_license">License</string>
     <string name="pref_license_summary">GNU General Public License v3.0 or later</string>
     <string name="license_url">https://www.gnu.org/licenses/gpl-3.0.html</string>
-    <string name="pref_source">Source code</string>
-    <string name="pref_source_summary">Free software. Tap to view the source.</string>
-    <string name="source_url">https://example.com/your-repo</string>
+    <string name="pref_source">Open Source</string>
+    <string name="pref_source_summary">View on GitHub</string>
+    <string name="source_url">https://github.com/swmpi/metastrip</string>
     <string name="third_party_title">Third-party notices</string>
     <string name="third_party_summary">AndroidX and Material Components</string>
     <string name="third_party_message">This app uses the following libraries under the Apache License 2.0:\n\n• AndroidX Core, AppCompat, Activity, ConstraintLayout, Lifecycle, Preference, DocumentFile\n• Material Components for Android\n\nThe settings icon is from Material Design Icons (Apache License 2.0).</string>

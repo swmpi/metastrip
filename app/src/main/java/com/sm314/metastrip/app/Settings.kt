@@ -35,6 +35,10 @@ class Settings(context: Context) {
     val reencode: Boolean
         get() = prefs.getBoolean(KEY_REENCODE, true)
 
+    /** Off by default. Deleting is destructive and always needs the user to confirm. */
+    val deleteOriginal: Boolean
+        get() = prefs.getBoolean(KEY_DELETE_ORIGINAL, false)
+
     /** A tree URI from the system folder picker, or null for the default folder. */
     var outputTreeUri: Uri?
         get() = prefs.getString(KEY_OUTPUT_DIR, null)?.let(Uri::parse)
@@ -56,9 +60,10 @@ class Settings(context: Context) {
         const val KEY_RANDOM_NAME = "random_file_name"
         const val KEY_REENCODE = "reencode"
         const val KEY_OUTPUT_DIR = "output_dir"
+        const val KEY_DELETE_ORIGINAL = "delete_original"
 
         /** Relative path used with MediaStore when no custom folder is set. */
-        const val DEFAULT_RELATIVE_PATH = Environment.DIRECTORY_PICTURES + "/MetaStrip"
+        val DEFAULT_RELATIVE_PATH: String = Environment.DIRECTORY_PICTURES + "/MetaStrip"
         const val DEFAULT_DIR_LABEL = "Internal storage/Pictures/MetaStrip"
     }
 }

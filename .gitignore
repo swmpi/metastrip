@@ -1,0 +1,39 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Build output
+build/
+.gradle/
+out/
+release/
+
+# Local configuration: contains the absolute path to your Android SDK.
+# Machine specific, never commit.
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+
+# Keystores: signing keys must never be committed.
+*.jks
+*.keystore
+
+# NDK
+obj/
+.externalNativeBuild/
+.cxx/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

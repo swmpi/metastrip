@@ -20,9 +20,18 @@ Always rebuilt from raw pixels into a fresh lossless file. Nothing but
 pixel data goes in, so nothing else can come out.
 
 **JPEG, HEIC, AVIF**
-Rebuilt from raw pixels by default and saved as a quality 95 JPEG. This is
-the only method that also catches metadata types the app doesn't know
-about by name.
+Rebuilt from raw pixels by default. This is the only method that also
+catches metadata types the app doesn't know about by name. Each format
+keeps its own where the platform allows it:
+
+| Input | Re-encoded output |
+|-------|-------------------|
+| JPEG | JPEG, quality 95 |
+| HEIC | HEIC, quality 95, written with `HeifWriter` via the device HEVC encoder. Falls back to JPEG if the device has no usable encoder. |
+| AVIF | JPEG, quality 95, because Android has no AVIF encoder. |
+
+HEIC is kept as HEIC so a phone's photo library isn't silently converted
+into JPEGs at roughly double the file size.
 
 You can turn this off in Settings to keep the original pixels byte for
 byte and remove only the known metadata blocks instead, so photo quality
@@ -51,7 +60,7 @@ separately, so they keep it either way.
 Requirements: Android Studio, JDK 17.
 
 ```
-git clone https://github.com/yourhandle/metastrip.git
+git clone https://github.com/swmpi/metastrip.git
 ```
 
 Open the folder in Android Studio, let Gradle sync, and run on a device or

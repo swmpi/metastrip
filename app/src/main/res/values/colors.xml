@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sampled from the app icon artwork. -->
+    <color name="ic_launcher_background">#0270FB</color>
+
+    <!--
+        Dark palette. Every text/background pairing below was checked against
+        WCAG AA (4.5:1 normal text, 3:1 large text and UI components).
+        Body text on surface 15.2:1, secondary text 10.1:1, primary on surface
+        9.5:1, button text on primary 7.5:1, outline on surface 6.0:1.
+    -->
+    <color name="md_background">#0F1318</color>
+    <color name="md_surface">#0F1318</color>
+    <color name="md_surface_variant">#202A37</color>
+    <color name="md_on_surface">#E4E8EE</color>
+    <color name="md_on_surface_variant">#B4C0CF</color>
+
+    <color name="md_primary">#8CBBFF</color>
+    <color name="md_on_primary">#00294F</color>
+    <color name="md_primary_container">#0A56C4</color>
+    <color name="md_on_primary_container">#E1ECFF</color>
+
+    <color name="md_secondary">#B4C0CF</color>
+    <color name="md_on_secondary">#1C2430</color>
+    <color name="md_secondary_container">#2A3646</color>
+    <color name="md_on_secondary_container">#E4E8EE</color>
+
+    <color name="md_outline">#8494A8</color>
+    <color name="md_outline_variant">#3A4656</color>
+
+    <color name="md_error">#FFB4AB</color>
+    <color name="md_on_error">#690005</color>
+    <color name="md_error_container">#93000A</color>
+    <color name="md_on_error_container">#FFDAD6</color>
+</resources>

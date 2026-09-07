@@ -26,7 +26,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
-import com.sm314.metastrip.app.databinding.ActivitySettingsBinding
+import com.sm314.metastrip.R
+import com.sm314.metastrip.databinding.ActivitySettingsBinding
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -71,6 +72,7 @@ class SettingsActivity : AppCompatActivity() {
             settings = Settings(requireContext())
 
             setupReencodeConfirmation()
+            setupDeleteConfirmation()
             setupOutputDir()
             setupAbout()
         }
@@ -87,6 +89,21 @@ class SettingsActivity : AppCompatActivity() {
                     .setNegativeButton(R.string.reencode_confirm_no, null)
                     .show()
                 false   // do not change yet; the dialog decides
+            }
+        }
+
+        /** Turning deletion ON asks for confirmation. Turning it OFF does not. */
+        private fun setupDeleteConfirmation() {
+            val pref = findPreference<SwitchPreferenceCompat>(Settings.KEY_DELETE_ORIGINAL) ?: return
+            pref.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue == false) return@setOnPreferenceChangeListener true
+                AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.delete_confirm_title)
+                    .setMessage(R.string.delete_confirm_message)
+                    .setPositiveButton(R.string.delete_confirm_yes) { _, _ -> pref.isChecked = true }
+                    .setNegativeButton(R.string.delete_confirm_no, null)
+                    .show()
+                false   // the dialog decides
             }
         }
 

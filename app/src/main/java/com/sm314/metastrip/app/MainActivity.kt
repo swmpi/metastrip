@@ -21,6 +21,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -29,7 +30,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.sm314.metastrip.app.databinding.ActivityMainBinding
+import com.sm314.metastrip.R
+import com.sm314.metastrip.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,6 +43,14 @@ class MainActivity : AppCompatActivity() {
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) onImageChosen(uri) }
+
+    /** Result of the system's own "delete this photo?" dialog. */
+    private val confirmDelete = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val deleted = result.resultCode == RESULT_OK
+        appendStatus(getString(if (deleted) R.string.delete_done else R.string.delete_declined))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,6 +121,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 binding.status.text = getString(R.string.status_done, res.fileName, methodText)
                 binding.shareButton.visibility = View.VISIBLE
+                // Only ever delete after the clean copy is safely written.
+                if (settings.deleteOriginal) deleteOriginal(uri)
             }.onFailure { err ->
                 binding.status.text = getString(
                     R.string.status_error,
@@ -118,6 +130,22 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    /** Runs only after a clean copy exists on disk. */
+    private fun deleteOriginal(source: Uri) {
+        when (val outcome = OriginalDeleter.delete(applicationContext, source)) {
+            is OriginalDeleter.Outcome.Deleted ->
+                appendStatus(getString(R.string.delete_done))
+            is OriginalDeleter.Outcome.NeedsConsent ->
+                confirmDelete.launch(IntentSenderRequest.Builder(outcome.intentSender).build())
+            is OriginalDeleter.Outcome.Unsupported ->
+                appendStatus(getString(R.string.delete_failed, outcome.reason))
+        }
+    }
+
+    private fun appendStatus(line: String) {
+        binding.status.text = binding.status.text.toString() + "\n" + line
     }
 
     private fun shareResult() {

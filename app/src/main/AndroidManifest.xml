@@ -15,6 +15,7 @@
          and there is no network access. -->
 
     <application
+        android:name=".app.MetaStripApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
@@ -23,7 +24,7 @@
         android:theme="@style/Theme.MetaStrip">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".app.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -38,9 +39,9 @@
         </activity>
 
         <activity
-            android:name=".SettingsActivity"
+            android:name=".app.SettingsActivity"
             android:exported="false"
             android:label="@string/settings_title"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName=".app.MainActivity" />
     </application>
 </manifest>

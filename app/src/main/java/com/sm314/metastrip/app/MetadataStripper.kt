@@ -68,10 +68,17 @@ object MetadataStripper {
         val write: (OutputStream) -> Unit
     )
 
+    /**
+     * HEIC quality for re-encoded HEIC output. Matched to the JPEG setting so
+     * the two paths are consistent; HEIC at this quality is still much smaller
+     * than the equivalent JPEG.
+     */
+    private const val HEIC_QUALITY = 95
+
     /** Refuse absurd inputs before allocating for them. */
     private const val MAX_INPUT_BYTES = 256L * 1024 * 1024
 
-    private const val ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    private const val ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789"
     private const val RANDOM_NAME_LENGTH = 13
     private val random = SecureRandom()
 
@@ -151,6 +158,22 @@ object MetadataStripper {
             // Convert to sRGB so the encoder has no reason to embed an ICC profile.
             decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
         }
+
+        // HEIC keeps its format when the device has an HEVC encoder, so a HEIC
+        // photo is not silently turned into a much larger JPEG. AVIF cannot be
+        // written by any platform API, so it still falls back to JPEG.
+        if (kind == Kind.HEIF) {
+            val heic = HeifEncoder.encode(context, bitmap, HEIC_QUALITY)
+            if (heic != null) {
+                bitmap.recycle()
+                // A fresh encode holds only pixels, but strip anyway so the
+                // guarantee does not depend on encoder behaviour.
+                val clean = runCatching { HeifStripper.strip(heic) }.getOrDefault(heic)
+                return Output("image/heic", "heic", Method.REENCODED) { it.write(clean) }
+            }
+            // No usable HEVC encoder on this device: fall through to JPEG.
+        }
+
         val enc = when (kind) {
             Kind.PNG, Kind.OTHER -> Encoding(Bitmap.CompressFormat.PNG, 100, "image/png", "png")   // GIF, BMP: lossless
             Kind.WEBP -> Encoding(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, "image/webp", "webp")
