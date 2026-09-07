@@ -28,7 +28,7 @@ keeps its own where the platform allows it:
 |-------|-------------------|
 | JPEG | JPEG, quality 95 |
 | HEIC | HEIC, quality 95, written with `androidx.heifwriter` via the device HEVC encoder. Falls back to JPEG if the device has no usable encoder. |
-| AVIF | JPEG, quality 95, because Android has no AVIF encoder. |
+| AVIF | JPEG, quality 95, because MetaStrip does not encode AVIF. |
 
 HEIC is kept as HEIC so a phone's photo library isn't silently converted
 into JPEGs at roughly double the file size.
