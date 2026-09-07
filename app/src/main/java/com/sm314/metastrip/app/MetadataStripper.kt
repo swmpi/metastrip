@@ -26,7 +26,6 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import com.sm314.metastrip.core.HeifStripper
 import com.sm314.metastrip.core.JpegStripper
@@ -337,11 +336,15 @@ object MetadataStripper {
         repeat(RANDOM_NAME_LENGTH) { append(ALPHANUMERIC[random.nextInt(ALPHANUMERIC.length)]) }
     }
 
-    /** Original name with the extension removed, unsafe characters replaced, and "_clean" added. */
+    /**
+     * Original name with the extension removed, unsafe characters replaced,
+     * and "_clean" added. Falls back to a timestamp when the provider has no
+     * real name to give, which is the case for everything the photo picker
+     * hands over; naming the output after the picker's internal id would be
+     * worse than not using the original name at all.
+     */
     private fun cleanName(context: Context, source: Uri): String {
-        val original = context.contentResolver
-            .query(source, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        val original = SourceFile.displayName(context, source)
         val stem = original?.substringBeforeLast('.')?.replace(Regex("[^A-Za-z0-9._-]"), "_")
             ?.trim('_', '.')
         val safeStem = if (stem.isNullOrBlank()) "image_" + timestamp() else stem

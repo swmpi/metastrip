@@ -19,7 +19,6 @@ package com.sm314.metastrip.app
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -54,8 +53,8 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
 
     data class UiState(
         val sourceUri: Uri? = null,
-        /** Display name of [sourceUri]. Null until the provider has been queried. */
-        val sourceName: String? = null,
+        /** Label for [sourceUri]: its real name, or a description when the picker hides it. */
+        val sourceLabel: String? = null,
         val result: MetadataStripper.Result? = null,
         val busy: Boolean = false,
         val status: Status = Status.Empty
@@ -71,17 +70,10 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
         // Querying the provider touches disk, so it happens off the main
         // thread and lands a moment later. A newer pick wins.
         viewModelScope.launch {
-            val name = withContext(Dispatchers.IO) { displayName(appContext, uri) }
-            update { if (it.sourceUri == uri) it.copy(sourceName = name) else it }
+            val label = withContext(Dispatchers.IO) { SourceFile.describe(appContext, uri) }
+            update { if (it.sourceUri == uri) it.copy(sourceLabel = label) else it }
         }
     }
-
-    /** The provider's own name for the file, or null if it does not report one. */
-    private fun displayName(context: Context, uri: Uri): String? = runCatching {
-        context.contentResolver
-            .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-    }.getOrNull()?.takeIf { it.isNotBlank() }
 
     fun onBadShare() = update { it.copy(status = Status.BadShare) }
 
@@ -118,7 +110,7 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
         val next = transform(_state.value)
         _state.value = next
         saved[KEY_SOURCE] = next.sourceUri
-        saved[KEY_SOURCE_NAME] = next.sourceName
+        saved[KEY_SOURCE_LABEL] = next.sourceLabel
         saved[KEY_RESULT_URI] = next.result?.uri
         saved[KEY_RESULT_MIME] = next.result?.mimeType
         saved[KEY_RESULT_NAME] = next.result?.fileName
@@ -145,7 +137,7 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
         }
         return UiState(
             sourceUri = source,
-            sourceName = saved[KEY_SOURCE_NAME],
+            sourceLabel = saved[KEY_SOURCE_LABEL],
             result = result,
             status = status
         )
@@ -153,7 +145,7 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
 
     private companion object {
         const val KEY_SOURCE = "source_uri"
-        const val KEY_SOURCE_NAME = "source_name"
+        const val KEY_SOURCE_LABEL = "source_label"
         const val KEY_RESULT_URI = "result_uri"
         const val KEY_RESULT_MIME = "result_mime"
         const val KEY_RESULT_NAME = "result_name"

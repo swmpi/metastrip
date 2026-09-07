@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         // Caption the image on screen. The preview shows the result once there
         // is one, so the name has to follow it rather than always naming the
         // source. Without this an undecodable file leaves the screen blank.
-        val caption = s.result?.fileName ?: s.sourceName
+        val caption = s.result?.fileName ?: s.sourceLabel
         binding.fileName.text = caption.orEmpty()
         binding.fileName.visibility = if (caption != null) View.VISIBLE else View.GONE
 
