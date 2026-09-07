@@ -23,7 +23,6 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -36,7 +35,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.sm314.metastrip.R
-import com.sm314.metastrip.app.MainViewModel.DeleteNote
 import com.sm314.metastrip.app.MainViewModel.Status
 import com.sm314.metastrip.databinding.ActivityMainBinding
 
@@ -61,13 +59,6 @@ class MainActivity : AppCompatActivity() {
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) vm.onImageChosen(uri) }
-
-    /** Result of the system's own "delete this photo?" dialog. */
-    private val confirmDelete = registerForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        vm.onDeleteNote(if (result.resultCode == RESULT_OK) DeleteNote.Deleted else DeleteNote.Kept)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,37 +117,21 @@ class MainActivity : AppCompatActivity() {
             previewedUri = want
             if (want != null) showPreview(want) else binding.preview.setImageDrawable(null)
         }
-
-        // Runs once per successful strip. Cleared immediately so a rotation
-        // in the middle of the system dialog does not launch a second one.
-        s.pendingDelete?.let { source ->
-            vm.onDeleteHandled()
-            deleteOriginal(source)
-        }
     }
 
-    private fun statusText(s: MainViewModel.UiState): String {
-        val main = when (val st = s.status) {
-            Status.Empty -> getString(R.string.status_empty)
-            Status.Ready -> getString(R.string.status_ready)
-            Status.Working -> getString(R.string.status_working)
-            Status.BadShare -> getString(R.string.status_bad_share)
-            is Status.Error -> getString(R.string.status_error, st.message)
-            is Status.Done -> {
-                val method = when (st.method) {
-                    MetadataStripper.Method.REENCODED -> getString(R.string.method_reencoded)
-                    MetadataStripper.Method.LOSSLESS -> getString(R.string.method_lossless)
-                }
-                getString(R.string.status_done, st.fileName, method)
+    private fun statusText(s: MainViewModel.UiState): String = when (val st = s.status) {
+        Status.Empty -> getString(R.string.status_empty)
+        Status.Ready -> getString(R.string.status_ready)
+        Status.Working -> getString(R.string.status_working)
+        Status.BadShare -> getString(R.string.status_bad_share)
+        is Status.Error -> getString(R.string.status_error, st.message)
+        is Status.Done -> {
+            val method = when (st.method) {
+                MetadataStripper.Method.REENCODED -> getString(R.string.method_reencoded)
+                MetadataStripper.Method.LOSSLESS -> getString(R.string.method_lossless)
             }
+            getString(R.string.status_done, st.fileName, method)
         }
-        val note = when (val n = s.deleteNote) {
-            null -> null
-            DeleteNote.Deleted -> getString(R.string.delete_done)
-            DeleteNote.Kept -> getString(R.string.delete_declined)
-            is DeleteNote.Failed -> getString(R.string.delete_failed, n.reason)
-        }
-        return if (note == null) main else "$main\n$note"
     }
 
     /**
@@ -198,18 +173,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         vm.onImageChosen(uri)
-    }
-
-    /** Runs only after a clean copy exists on disk and has been verified. */
-    private fun deleteOriginal(source: Uri) {
-        when (val outcome = OriginalDeleter.delete(applicationContext, source)) {
-            is OriginalDeleter.Outcome.Deleted ->
-                vm.onDeleteNote(DeleteNote.Deleted)
-            is OriginalDeleter.Outcome.NeedsConsent ->
-                confirmDelete.launch(IntentSenderRequest.Builder(outcome.intentSender).build())
-            is OriginalDeleter.Outcome.Unsupported ->
-                vm.onDeleteNote(DeleteNote.Failed(outcome.reason))
-        }
     }
 
     private fun shareResult() {

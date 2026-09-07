@@ -33,16 +33,6 @@
     <string name="pref_random_name_on">On. Saved files get a random 13 character name, like hwpn1dprea5c9.jpg, so the name gives nothing away.</string>
     <string name="pref_random_name_off">Off. Saved files keep the original name with _clean added.</string>
 
-    <string name="pref_delete_original_title">Delete the original</string>
-    <string name="pref_delete_original_on">On. After a clean copy is saved, MetaStrip asks Android to delete the photo you picked. Android shows its own confirmation each time.</string>
-    <string name="pref_delete_original_off">Off. The photo you picked is left alone and a clean copy is saved alongside it.</string>
-    <string name="delete_confirm_title">Delete originals after stripping?</string>
-    <string name="delete_confirm_message">The clean copy is always written and checked first, so a failure cannot lose your photo. After that, MetaStrip asks Android to delete the original, and Android shows its own confirmation each time.\n\nDeleting cannot be undone. The photo may still sit in your gallery\'s recently deleted folder for a while, but do not count on it.\n\nPhotos chosen with the system picker cannot be deleted at all, because Android only grants read access to them. Sharing a photo into MetaStrip from your gallery does allow it.\n\nTurn this on?</string>
-    <string name="delete_confirm_yes">Turn on</string>
-    <string name="delete_confirm_no">Cancel</string>
-    <string name="delete_done">Original deleted.</string>
-    <string name="delete_declined">Original kept.</string>
-    <string name="delete_failed">Original not deleted. %1$s</string>
 
     <!-- Settings: output -->
     <string name="cat_output">Output</string>

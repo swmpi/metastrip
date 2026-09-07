@@ -17,13 +17,6 @@
             app:summaryOn="@string/pref_random_name_on"
             app:summaryOff="@string/pref_random_name_off" />
 
-        <SwitchPreferenceCompat
-            app:key="delete_original"
-            app:defaultValue="false"
-            app:title="@string/pref_delete_original_title"
-            app:summaryOn="@string/pref_delete_original_on"
-            app:summaryOff="@string/pref_delete_original_off" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cat_output">

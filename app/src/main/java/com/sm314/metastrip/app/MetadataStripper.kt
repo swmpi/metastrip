@@ -123,8 +123,8 @@ object MetadataStripper {
 
     /**
      * Re-opens the saved file and confirms it is non-empty and starts with the
-     * right magic bytes for its type. The caller may delete the original after
-     * this returns, so a silently truncated or empty write must be caught here.
+     * right magic bytes for its type, so a silently truncated or empty write
+     * is caught before the result is reported as a success.
      */
     @Throws(IOException::class)
     private fun verifySaved(context: Context, uri: Uri, mime: String) {

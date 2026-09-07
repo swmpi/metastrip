@@ -38,9 +38,7 @@ import kotlinx.coroutines.withContext
  * [SavedStateHandle], which survives the process being killed in the
  * background.
  *
- * The activity only renders [state] and forwards user actions. Anything that
- * needs an Activity, such as launching the system delete dialog, is signalled
- * through [UiState.pendingDelete] and cleared once the activity has taken it.
+ * The activity only renders [state] and forwards user actions.
  */
 class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
 
@@ -53,20 +51,11 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
         data object BadShare : Status
     }
 
-    sealed interface DeleteNote {
-        data object Deleted : DeleteNote
-        data object Kept : DeleteNote
-        data class Failed(val reason: String) : DeleteNote
-    }
-
     data class UiState(
         val sourceUri: Uri? = null,
         val result: MetadataStripper.Result? = null,
         val busy: Boolean = false,
-        val status: Status = Status.Empty,
-        val deleteNote: DeleteNote? = null,
-        /** Set when a strip succeeds with delete-original on. The activity acts on it once, then clears it. */
-        val pendingDelete: Uri? = null
+        val status: Status = Status.Empty
     )
 
     private val _state = MutableStateFlow(restore())
@@ -82,9 +71,8 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
         val current = _state.value
         val uri = current.sourceUri ?: return
         if (current.busy) return
-        val deleteAfter = settings.deleteOriginal   // read once, at the start
 
-        update { it.copy(busy = true, status = Status.Working, deleteNote = null, pendingDelete = null) }
+        update { it.copy(busy = true, status = Status.Working) }
 
         viewModelScope.launch {
             val outcome = withContext(Dispatchers.IO) {
@@ -95,8 +83,7 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
                     it.copy(
                         busy = false,
                         result = res,
-                        status = Status.Done(res.fileName, res.method),
-                        pendingDelete = if (deleteAfter) uri else null
+                        status = Status.Done(res.fileName, res.method)
                     )
                 }
             }.onFailure { err ->
@@ -106,11 +93,6 @@ class MainViewModel(private val saved: SavedStateHandle) : ViewModel() {
             }
         }
     }
-
-    /** The activity has launched or resolved the delete; do not offer it again after rotation. */
-    fun onDeleteHandled() = update { it.copy(pendingDelete = null) }
-
-    fun onDeleteNote(note: DeleteNote) = update { it.copy(deleteNote = note) }
 
     // ---------- Persistence ----------
 
