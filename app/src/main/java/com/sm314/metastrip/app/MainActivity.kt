@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) vm.onImageChosen(uri) }
+    ) { uri -> if (uri != null) vm.onImageChosen(applicationContext, uri) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,6 +111,13 @@ class MainActivity : AppCompatActivity() {
         binding.stripButton.isEnabled = !s.busy && s.sourceUri != null
         binding.shareButton.visibility = if (s.result != null) View.VISIBLE else View.GONE
         binding.status.text = statusText(s)
+
+        // Caption the image on screen. The preview shows the result once there
+        // is one, so the name has to follow it rather than always naming the
+        // source. Without this an undecodable file leaves the screen blank.
+        val caption = s.result?.fileName ?: s.sourceName
+        binding.fileName.text = caption.orEmpty()
+        binding.fileName.visibility = if (caption != null) View.VISIBLE else View.GONE
 
         val want = s.result?.uri ?: s.sourceUri
         if (want != previewedUri) {
@@ -172,7 +179,7 @@ class MainActivity : AppCompatActivity() {
             vm.onBadShare()
             return
         }
-        vm.onImageChosen(uri)
+        vm.onImageChosen(applicationContext, uri)
     }
 
     private fun shareResult() {
