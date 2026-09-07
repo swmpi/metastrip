@@ -17,7 +17,9 @@
  */
 package com.sm314.metastrip.app
 
+import android.content.ContentResolver
 import android.content.Intent
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -34,6 +36,11 @@ import com.sm314.metastrip.R
 import com.sm314.metastrip.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+
+    private companion object {
+        /** Longest edge of the on-screen preview, in pixels. */
+        const val PREVIEW_MAX_EDGE = 1280
+    }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var settings: Settings
@@ -89,17 +96,46 @@ class MainActivity : AppCompatActivity() {
     /** Supports "Share to MetaStrip" from a gallery or any other app. */
     private fun handleShareIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_SEND) return
-        val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
-        if (uri != null) onImageChosen(uri)
+        val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) ?: return
+        // Other apps may only hand over content:// URIs, which go through a
+        // provider and carry an explicit grant. file:// and anything else
+        // would let a sender point the app at arbitrary paths.
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) {
+            binding.status.text = getString(R.string.status_bad_share)
+            return
+        }
+        onImageChosen(uri)
     }
 
     private fun onImageChosen(uri: Uri) {
         sourceUri = uri
         result = null
-        binding.preview.setImageURI(uri)
+        showPreview(uri)
         binding.status.text = getString(R.string.status_ready)
         binding.stripButton.isEnabled = true
         binding.shareButton.visibility = View.GONE
+    }
+
+    /**
+     * Loads a downsampled preview on a background thread. The sample size is
+     * chosen from the header before any pixels are allocated, so a hostile
+     * file that declares enormous dimensions costs a small bitmap, not the
+     * whole heap, and the UI thread never blocks on a decode.
+     */
+    private fun showPreview(uri: Uri) {
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val src = ImageDecoder.createSource(contentResolver, uri)
+                    ImageDecoder.decodeBitmap(src) { decoder, info, _ ->
+                        val longest = maxOf(info.size.width, info.size.height)
+                        decoder.setTargetSampleSize(maxOf(1, longest / PREVIEW_MAX_EDGE))
+                    }
+                }.getOrNull()
+            }
+            if (bitmap != null) binding.preview.setImageBitmap(bitmap)
+            else binding.preview.setImageDrawable(null)
+        }
     }
 
     private fun stripCurrentImage() {
@@ -114,7 +150,7 @@ class MainActivity : AppCompatActivity() {
             setBusy(false)
             outcome.onSuccess { res ->
                 result = res
-                binding.preview.setImageURI(res.uri)
+                showPreview(res.uri)
                 val methodText = when (res.method) {
                     MetadataStripper.Method.REENCODED -> getString(R.string.method_reencoded)
                     MetadataStripper.Method.LOSSLESS -> getString(R.string.method_lossless)

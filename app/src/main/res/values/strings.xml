@@ -14,6 +14,7 @@
     <string name="status_ready">Ready. Tap the button to strip metadata.</string>
     <string name="status_working">Working…</string>
     <string name="status_done">Saved %1$s (%2$s)</string>
+    <string name="status_bad_share">That share was not a content link and was ignored.</string>
     <string name="status_error">Something went wrong: %1$s</string>
     <string name="method_reencoded">re-encoded, all metadata removed</string>
     <string name="method_lossless">lossless, pixels untouched</string>

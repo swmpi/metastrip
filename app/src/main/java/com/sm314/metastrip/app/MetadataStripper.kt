@@ -20,6 +20,7 @@ package com.sm314.metastrip.app
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -78,6 +79,15 @@ object MetadataStripper {
     /** Refuse absurd inputs before allocating for them. */
     private const val MAX_INPUT_BYTES = 256L * 1024 * 1024
 
+    /**
+     * Cap on decoded pixels for the re-encode path. A decoded ARGB bitmap
+     * costs 4 bytes per pixel, so 64 MP is 256 MB, the practical ceiling even
+     * with largeHeap. Lossless mode never decodes and has no such limit. A
+     * tiny file can still declare huge dimensions (a decompression bomb), so
+     * this is checked from the header before any pixel memory is allocated.
+     */
+    private const val MAX_PIXELS = 64L * 1_000_000
+
     private const val ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789"
     private const val RANDOM_NAME_LENGTH = 13
     private val random = SecureRandom()
@@ -107,7 +117,30 @@ object MetadataStripper {
         } else {
             saveToMediaStore(context, fileName, output)
         }
+        verifySaved(context, uri, output.mimeType)
         return Result(uri, output.mimeType, finalName, output.method)
+    }
+
+    /**
+     * Re-opens the saved file and confirms it is non-empty and starts with the
+     * right magic bytes for its type. The caller may delete the original after
+     * this returns, so a silently truncated or empty write must be caught here.
+     */
+    @Throws(IOException::class)
+    private fun verifySaved(context: Context, uri: Uri, mime: String) {
+        val head = ByteArray(16)
+        val n = context.contentResolver.openInputStream(uri)?.use { it.read(head) } ?: -1
+        val ok = n >= 12 && when (mime) {
+            "image/jpeg" -> head[0] == 0xFF.toByte() && head[1] == 0xD8.toByte()
+            "image/png" -> head[0] == 0x89.toByte() && ascii(head, 1, 3) == "PNG"
+            "image/webp" -> ascii(head, 0, 4) == "RIFF" && ascii(head, 8, 4) == "WEBP"
+            "image/heic", "image/avif" -> ascii(head, 4, 4) == "ftyp"
+            else -> true
+        }
+        if (!ok) {
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            throw IOException("The saved file failed verification and was removed")
+        }
     }
 
     private fun checkSize(context: Context, source: Uri) {
@@ -115,6 +148,20 @@ object MetadataStripper {
             context.contentResolver.openAssetFileDescriptor(source, "r")?.use { it.length } ?: -1L
         }.getOrDefault(-1L)
         if (length > MAX_INPUT_BYTES) throw IOException("Image is larger than 256 MB")
+    }
+
+    /** Reads only the header, so a decompression bomb is rejected before it can allocate. */
+    private fun checkPixels(context: Context, source: Uri) {
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, opts) }
+        val w = opts.outWidth.toLong(); val h = opts.outHeight.toLong()
+        if (w <= 0 || h <= 0) return   // unknown to BitmapFactory (e.g. AVIF on API < 31); ImageDecoder decides
+        if (w * h > MAX_PIXELS) {
+            throw IOException(
+                "This image is ${w * h / 1_000_000} megapixels, above the ${MAX_PIXELS / 1_000_000} MP limit " +
+                    "for re-encoding. Turn off re-encoding in Settings to strip it losslessly at any size."
+            )
+        }
     }
 
     // ---------- Format detection ----------
@@ -151,6 +198,7 @@ object MetadataStripper {
     )
 
     private fun reencodeOutput(context: Context, source: Uri, kind: Kind): Output {
+        checkPixels(context, source)
         val decoderSource = ImageDecoder.createSource(context.contentResolver, source)
         val bitmap = ImageDecoder.decodeBitmap(decoderSource) { decoder, _, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE   // needed for compress()
@@ -164,14 +212,15 @@ object MetadataStripper {
         // written by any platform API, so it still falls back to JPEG.
         if (kind == Kind.HEIF) {
             val heic = HeifEncoder.encode(context, bitmap, HEIC_QUALITY)
-            if (heic != null) {
+            // The stripper must be able to parse the encoder's output; if it
+            // cannot, nothing has been verified, so fall back to JPEG instead
+            // of writing bytes the app does not understand.
+            val clean = heic?.let { runCatching { HeifStripper.strip(it) }.getOrNull() }
+            if (clean != null) {
                 bitmap.recycle()
-                // A fresh encode holds only pixels, but strip anyway so the
-                // guarantee does not depend on encoder behaviour.
-                val clean = runCatching { HeifStripper.strip(heic) }.getOrDefault(heic)
                 return Output("image/heic", "heic", Method.REENCODED) { it.write(clean) }
             }
-            // No usable HEVC encoder on this device: fall through to JPEG.
+            // No usable HEVC encoder, or unparseable output: fall through to JPEG.
         }
 
         val enc = when (kind) {

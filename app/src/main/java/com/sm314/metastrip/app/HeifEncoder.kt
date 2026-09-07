@@ -50,6 +50,12 @@ object HeifEncoder {
     fun encode(context: Context, bitmap: Bitmap, quality: Int): ByteArray? {
         if (bitmap.width <= 0 || bitmap.height <= 0) return null
 
+        // Sweep anything a previous run left behind if the process was killed
+        // mid-encode. Cache is private to the app, so this is hygiene, not
+        // security, but it keeps the directory from filling up.
+        context.cacheDir.listFiles { f -> f.name.startsWith("heif") && f.name.endsWith(".heic") }
+            ?.forEach { it.delete() }
+
         val temp = File.createTempFile("heif", ".heic", context.cacheDir)
         try {
             var writer: HeifWriter? = null
