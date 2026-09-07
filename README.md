@@ -19,6 +19,11 @@ vendor-specific blocks. The exact method depends on the file type.
 Always rebuilt from raw pixels into a fresh lossless file. Nothing but
 pixel data goes in, so nothing else can come out.
 
+On Android 10 a WebP input is saved as a PNG rather than a WebP. The
+lossless WebP encoder only exists from Android 11 on, and the lossy one
+would break the promise that these formats stay lossless. The container
+changes, the pixels do not. Android 11 and newer keep WebP as WebP.
+
 **JPEG, HEIC, AVIF**
 Rebuilt from raw pixels by default. This is the only method that also
 catches metadata types the app doesn't know about by name. Each format

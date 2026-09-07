@@ -44,7 +44,9 @@ import java.util.Locale
  * Strips metadata from an image and saves a new file.
  *
  * Lossless formats (PNG, WebP, GIF, BMP) are always re-encoded to a
- * lossless output, so nothing is lost and no metadata can survive.
+ * lossless output, so nothing is lost and no metadata can survive. On
+ * Android 10 a WebP input comes back as a PNG, because the lossless WebP
+ * encoder only exists from Android 11 on.
  *
  * Lossy formats (JPEG, HEIC, AVIF) follow the "re-encode" setting:
  *
@@ -235,7 +237,7 @@ object MetadataStripper {
 
         val enc = when (kind) {
             Kind.PNG, Kind.OTHER -> Encoding(Bitmap.CompressFormat.PNG, 100, "image/png", "png")   // GIF, BMP: lossless
-            Kind.WEBP -> Encoding(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, "image/webp", "webp")
+            Kind.WEBP -> webpEncoding()
             Kind.JPEG, Kind.HEIF, Kind.AVIF -> Encoding(Bitmap.CompressFormat.JPEG, 95, "image/jpeg", "jpg")
         }
         // Encode to memory, then run the lossless stripper over the encoder's own
@@ -258,6 +260,21 @@ object MetadataStripper {
         }
         return Output(enc.mime, enc.ext, Method.REENCODED) { it.write(bytes) }
     }
+
+    /**
+     * WEBP_LOSSLESS only exists from API 30, and minSdk is 29.
+     *
+     * The plain WEBP format is lossy, so using it on Android 10 would quietly
+     * break the rule that a lossless input stays lossless. PNG is lossless
+     * everywhere, so Android 10 gets a PNG instead: the container changes,
+     * the pixels do not.
+     */
+    private fun webpEncoding(): Encoding =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Encoding(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, "image/webp", "webp")
+        } else {
+            Encoding(Bitmap.CompressFormat.PNG, 100, "image/png", "png")
+        }
 
     /**
      * Turns a decoder failure into something the user can act on.
