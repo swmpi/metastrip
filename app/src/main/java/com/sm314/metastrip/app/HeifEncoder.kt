@@ -17,6 +17,7 @@
  */
 package com.sm314.metastrip.app
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.heifwriter.HeifWriter
@@ -70,6 +71,11 @@ object HeifEncoder {
                 writer.addBitmap(bitmap)
                 writer.stop(STOP_TIMEOUT_MS)
             } finally {
+                // HeifWriter implements Closeable, but androidx marks the
+                // inherited close() as library-internal, so lint flags the
+                // documented way to release the encoder. There is no public
+                // alternative; leaking it would starve the HEVC encoder.
+                @SuppressLint("RestrictedApi")
                 runCatching { writer?.close() }
             }
 
