@@ -23,6 +23,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
 import android.graphics.ImageDecoder
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -155,19 +157,43 @@ object MetadataStripper {
         if (length > MAX_INPUT_BYTES) throw IOException("Image is larger than 256 MB")
     }
 
-    /** Reads only the header, so a decompression bomb is rejected before it can allocate. */
-    private fun checkPixels(context: Context, source: Uri) {
+    /**
+     * Reads only the header, so a decompression bomb is rejected before it can
+     * allocate. Returns the dimensions it found, or null when the header gives
+     * none, so the caller can reuse them without parsing the file twice.
+     */
+    private fun checkPixels(context: Context, source: Uri): Pair<Int, Int>? {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, opts) }
-        val w = opts.outWidth.toLong(); val h = opts.outHeight.toLong()
-        if (w <= 0 || h <= 0) return   // unknown to BitmapFactory (e.g. AVIF on API < 31); ImageDecoder decides
-        if (w * h > MAX_PIXELS) {
+        val w = opts.outWidth; val h = opts.outHeight
+        if (w <= 0 || h <= 0) return null   // unknown to BitmapFactory; ImageDecoder decides
+        if (w.toLong() * h > MAX_PIXELS) {
             throw IOException(
-                "This image is ${w * h / 1_000_000} megapixels, above the ${MAX_PIXELS / 1_000_000} MP limit " +
+                "This image is ${w.toLong() * h / 1_000_000} megapixels, above the ${MAX_PIXELS / 1_000_000} MP limit " +
                     "for re-encoding. Turn off re-encoding in Settings to strip it losslessly at any size."
             )
         }
+        return w to h
     }
+
+    /**
+     * The largest AVIF this device can actually decode, or null when it cannot
+     * be determined.
+     *
+     * AVIF decoding runs on the device's AV1 decoder, and that decoder declares
+     * a maximum frame size which is often far below what a photo needs. A low
+     * end phone may stop at 1280x1280, while a flagship still stops well short
+     * of a 30 MP camera image. This is a property of the device, not of the
+     * file, so it has to be read at runtime rather than assumed.
+     */
+    private fun av1MaxSize(): Pair<Int, Int>? = runCatching {
+        MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
+            .filter { !it.isEncoder && it.supportedTypes.any { t -> t.equals(MediaFormat.MIMETYPE_VIDEO_AV1, true) } }
+            .mapNotNull { it.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AV1).videoCapabilities }
+            // More than one decoder may exist; the most capable one wins.
+            .maxByOrNull { it.supportedWidths.upper.toLong() * it.supportedHeights.upper }
+            ?.let { it.supportedWidths.upper to it.supportedHeights.upper }
+    }.getOrNull()
 
     // ---------- Format detection ----------
 
@@ -205,7 +231,8 @@ object MetadataStripper {
     private fun reencodeOutput(
         context: Context, source: Uri, kind: Kind, afterLosslessFailed: Boolean
     ): Output {
-        checkPixels(context, source)
+        val size = checkPixels(context, source)
+        if (kind == Kind.AVIF && size != null) checkAvifDecodable(size, afterLosslessFailed)
         val decoderSource = ImageDecoder.createSource(context.contentResolver, source)
         val bitmap = try {
             ImageDecoder.decodeBitmap(decoderSource) { decoder, _, _ ->
@@ -276,6 +303,32 @@ object MetadataStripper {
         }
 
     /**
+     * Fails early, and accurately, when the image is larger than this device's
+     * AV1 decoder will accept.
+     *
+     * Without this the decode is attempted and fails with a generic Skia error,
+     * which says nothing about the real cause. Checking first means the message
+     * can name the actual limit and the actual image size.
+     */
+    @Throws(IOException::class)
+    private fun checkAvifDecodable(size: Pair<Int, Int>, afterLosslessFailed: Boolean) {
+        val (w, h) = size
+        val max = av1MaxSize() ?: return   // unknown: let the decode attempt decide
+        val (maxW, maxH) = max
+        if (w <= maxW && h <= maxH) return
+        val advice = if (afterLosslessFailed) {
+            "Its structure could not be read for lossless stripping either, so MetaStrip cannot handle this file."
+        } else {
+            "Turn off re-encoding in Settings to strip it losslessly at any size, keeping it as AVIF."
+        }
+        throw IOException(
+            "This AVIF is ${w} x ${h}, and this device's AV1 decoder only handles up to " +
+                "${maxW} x ${maxH}. Android decodes AVIF with the AV1 video decoder, whose maximum " +
+                "frame size is usually far smaller than a camera photo. $advice"
+        )
+    }
+
+    /**
      * Turns a decoder failure into something the user can act on.
      *
      * ImageDecoder reports these as raw Skia strings such as "getPixels failed
@@ -295,9 +348,13 @@ object MetadataStripper {
             "Turn off re-encoding in Settings to strip it losslessly and keep it as ${kind.label}."
         }
         val message = when (kind) {
-            Kind.AVIF ->
-                "Android cannot decode this AVIF. It supports only 8-bit and 10-bit 4:2:0 AVIF; " +
-                    "4:4:4, 4:2:2 and 12-bit files are refused on every Android version. $advice"
+            Kind.AVIF -> {
+                // Size is checked before the decode, so reaching here means the
+                // file fits and something about its coding was rejected instead.
+                "Android cannot decode this AVIF. Android decodes AVIF with the AV1 video " +
+                    "decoder, which handles only 8-bit and 10-bit 4:2:0; 4:4:4, 4:2:2 and 12-bit " +
+                    "files are refused. $advice"
+            }
             // JPEG and HEIC also have a lossless path, so the same advice applies.
             Kind.HEIF, Kind.JPEG -> "Android cannot decode this ${kind.label}. $advice"
             // PNG, WebP and the rest have no lossless path to fall back to.
