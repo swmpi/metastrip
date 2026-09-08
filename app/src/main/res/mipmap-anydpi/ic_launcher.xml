@@ -2,4 +2,8 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <!-- Themed icons render the alpha channel only, tinted by the system.
+         The foreground is already a silhouette on transparency, so it works
+         as-is. Ignored by Android 12 and below. -->
+    <monochrome android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>

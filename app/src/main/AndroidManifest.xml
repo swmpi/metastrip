@@ -8,13 +8,21 @@
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- No permissions on purpose. Photo Picker handles reading,
          MediaStore or the system folder picker handles writing,
          and there is no network access. -->
 
+    <!--
+        allowBackup="false" turns off backup on every supported version, so the
+        fullBackupContent file lint asks for would be dead configuration. The
+        extraction rules are still declared because they additionally opt out
+        of device-to-device transfer, which is not covered by allowBackup.
+    -->
     <application
+        tools:ignore="DataExtractionRules"
         android:name=".app.MetaStripApp"
         android:allowBackup="false"
         android:largeHeap="true"

@@ -18,11 +18,11 @@
 package com.sm314.metastrip.app
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -151,7 +151,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         private fun openUrl(url: String) {
-            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
         }
     }
 }
