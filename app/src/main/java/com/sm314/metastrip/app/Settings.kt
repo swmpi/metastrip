@@ -35,6 +35,14 @@ class Settings(context: Context) {
     val reencode: Boolean
         get() = prefs.getBoolean(KEY_REENCODE, true)
 
+    /**
+     * Off by default, which uses the photo picker. The photo picker never
+     * reports real file names, so this offers the system file browser instead,
+     * which does. Both are permission free.
+     */
+    val useFileBrowser: Boolean
+        get() = prefs.getBoolean(KEY_FILE_BROWSER, false)
+
     /** A tree URI from the system folder picker, or null for the default folder. */
     var outputTreeUri: Uri?
         get() = prefs.getString(KEY_OUTPUT_DIR, null)?.let(Uri::parse)
@@ -55,6 +63,7 @@ class Settings(context: Context) {
     companion object {
         const val KEY_RANDOM_NAME = "random_file_name"
         const val KEY_REENCODE = "reencode"
+        const val KEY_FILE_BROWSER = "file_browser"
         const val KEY_OUTPUT_DIR = "output_dir"
 
         /** Relative path used with MediaStore when no custom folder is set. */

@@ -60,6 +60,15 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.PickVisualMedia()
     ) { uri -> if (uri != null) vm.onImageChosen(applicationContext, uri) }
 
+    /**
+     * The alternative to the photo picker. Both are permission free and grant
+     * access to the single chosen file, but only this one reports the real
+     * file name, which the photo picker withholds by design.
+     */
+    private val browseImage = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) vm.onImageChosen(applicationContext, uri) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -74,10 +83,16 @@ class MainActivity : AppCompatActivity() {
             } else false
         }
 
+        // Read at the moment of the tap, so a change in Settings takes effect
+        // without coming back through onCreate.
         binding.pickButton.setOnClickListener {
-            pickImage.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-            )
+            if (settings.useFileBrowser) {
+                browseImage.launch(arrayOf("image/*"))
+            } else {
+                pickImage.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
         }
         binding.stripButton.setOnClickListener { vm.strip(applicationContext, settings) }
         binding.shareButton.setOnClickListener { shareResult() }

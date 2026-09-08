@@ -20,6 +20,10 @@
     <string name="method_lossless">lossless, pixels untouched</string>
 
     <!-- Settings: processing -->
+    <string name="cat_input">Choosing images</string>
+    <string name="pref_file_browser_title">Use the file browser</string>
+    <string name="pref_file_browser_on">On. Images are chosen with the system file browser, which reports real file names.</string>
+    <string name="pref_file_browser_off">Off. Images are chosen with the photo gallery. Android does not pass real file names on from the gallery, so MetaStrip shows the format and size instead.</string>
     <string name="cat_processing">Processing</string>
     <string name="pref_reencode_title">Re-encode JPEG, HEIC and AVIF (recommended)</string>
     <string name="pref_reencode_on">On. Lossy photos are rebuilt from raw pixels, so nothing hidden can survive. HEIC stays HEIC where the device supports it. JPEG stays JPEG, and AVIF becomes JPEG, because MetaStrip does not encode AVIF. PNG, WebP, GIF and BMP are always rebuilt losslessly.</string>
