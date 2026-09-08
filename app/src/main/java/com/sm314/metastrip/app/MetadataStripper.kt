@@ -317,15 +317,11 @@ object MetadataStripper {
         val (maxW, maxH) = max
         if (w <= maxW && h <= maxH) return
         val advice = if (afterLosslessFailed) {
-            "Its structure could not be read for lossless stripping either, so MetaStrip cannot handle this file."
+            "Lossless stripping failed too."
         } else {
-            "Turn off re-encoding in Settings to strip it losslessly at any size, keeping it as AVIF."
+            "Turn off re-encoding to strip it losslessly at any size."
         }
-        throw IOException(
-            "This AVIF is ${w} x ${h}, and this device's AV1 decoder only handles up to " +
-                "${maxW} x ${maxH}. Android decodes AVIF with the AV1 video decoder, whose maximum " +
-                "frame size is usually far smaller than a camera photo. $advice"
-        )
+        throw IOException("This AVIF is $w \u00d7 $h. This device's AV1 decoder stops at $maxW \u00d7 $maxH. $advice")
     }
 
     /**
@@ -343,18 +339,14 @@ object MetadataStripper {
      */
     private fun decodeFailed(kind: Kind, afterLosslessFailed: Boolean, cause: Exception): IOException {
         val advice = if (afterLosslessFailed) {
-            "Its structure could not be read for lossless stripping either, so MetaStrip cannot handle this file."
+            "Lossless stripping failed too."
         } else {
-            "Turn off re-encoding in Settings to strip it losslessly and keep it as ${kind.label}."
+            "Turn off re-encoding to strip it losslessly as ${kind.label}."
         }
         val message = when (kind) {
-            Kind.AVIF -> {
-                // Size is checked before the decode, so reaching here means the
-                // file fits and something about its coding was rejected instead.
-                "Android cannot decode this AVIF. Android decodes AVIF with the AV1 video " +
-                    "decoder, which handles only 8-bit and 10-bit 4:2:0; 4:4:4, 4:2:2 and 12-bit " +
-                    "files are refused. $advice"
-            }
+            // Size is checked before the decode, so reaching here means the file
+            // fits and something about its coding was rejected instead.
+            Kind.AVIF -> "Android decodes AVIF as AV1, which allows only 8-bit and 10-bit 4:2:0. $advice"
             // JPEG and HEIC also have a lossless path, so the same advice applies.
             Kind.HEIF, Kind.JPEG -> "Android cannot decode this ${kind.label}. $advice"
             // PNG, WebP and the rest have no lossless path to fall back to.
