@@ -5,7 +5,7 @@
 
         <SwitchPreferenceCompat
             app:key="file_browser"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:title="@string/pref_file_browser_title"
             app:summaryOn="@string/pref_file_browser_on"
             app:summaryOff="@string/pref_file_browser_off" />

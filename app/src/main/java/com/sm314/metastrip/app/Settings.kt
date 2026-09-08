@@ -36,12 +36,12 @@ class Settings(context: Context) {
         get() = prefs.getBoolean(KEY_REENCODE, true)
 
     /**
-     * Off by default, which uses the photo picker. The photo picker never
-     * reports real file names, so this offers the system file browser instead,
-     * which does. Both are permission free.
+     * On by default. The photo picker never reports real file names, so the
+     * system file browser is used instead, which does. Both are permission
+     * free; turning this off returns to the photo picker.
      */
     val useFileBrowser: Boolean
-        get() = prefs.getBoolean(KEY_FILE_BROWSER, false)
+        get() = prefs.getBoolean(KEY_FILE_BROWSER, true)
 
     /** A tree URI from the system folder picker, or null for the default folder. */
     var outputTreeUri: Uri?
