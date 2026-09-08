@@ -11,9 +11,7 @@ android {
         applicationId = "com.sm314.metastrip"
         // 29 = Android 10. Needed so MediaStore writes need no permission.
         minSdk = 29
-        // Stays at 36 until the Android 17 behavior changes are tested on a
-        // real device. compileSdk 37 only affects what compiles.
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 2
         versionName = "1.1.0"
     }
